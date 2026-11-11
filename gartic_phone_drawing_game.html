@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gartic Party! - El Juego de Dibujo y Teléfono Descompuesto</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for cartoonish icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Fredoka & Nunito for playful cartoon look -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Tone.js for web audio sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        fredoka: ['Fredoka', 'sans-serif'],
+                        nunito: ['Nunito', 'sans-serif'],
+                    },
+                    colors: {
+                        gartic: {
+                            blue: '#0066FF',
+                            purple: '#6C5CE7',
+                            yellow: '#FFD15C',
+                            pink: '#FF4757',
+                            green: '#2ED573',
+                            bg: '#0F172A',
+                            panel: '#1E293B',
+                            lightBg: '#F8FAFC'
+                        }
+                    },
+                    boxShadow: {
+                        'cartoon': '0px 6px 0px 0px rgba(0,0,0,0.25)',
+                        'cartoon-sm': '0px 3px 0px 0px rgba(0,0,0,0.25)',
+                        'cartoon-active': '0px 1px 0px 0px rgba(0,0,0,0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        h1, h2, h3, h4, .font-fun {
+            font-family: 'Fredoka', sans-serif;
+        }
+        .btn-cartoon {
+            transition: all 0.1s ease;
+            box-shadow: 0 6px 0 #1e293b;
+        }
+        .btn-cartoon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #1e293b;
+        }
+        .btn-cartoon:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #1e293b;
+        }
+        .btn-yellow {
+            background-color: #FFD15C;
+            color: #1E293B;
+            border: 3px solid #1E293B;
+        }
+        .btn-blue {
+            background-color: #0066FF;
+            color: white;
+            border: 3px solid #1E293B;
+        }
+        .btn-green {
+            background-color: #2ED573;
+            color: white;
+            border: 3px solid #1E293B;
+        }
+        .btn-pink {
+            background-color: #FF4757;
+            color: white;
+            border: 3px solid #1E293B;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ffb703;
+            border-radius: 8px;
+        }
+        canvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="w-full bg-slate-800 border-b-4 border-slate-700 py-3 px-4 sm:px-8 flex justify-between items-center shadow-lg relative z-20">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="game.showHome()">
+            <div class="bg-yellow-400 text-slate-900 w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-2xl border-2 border-slate-900 shadow-cartoon-sm transform -rotate-6">
+                ✏️
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-wider text-yellow-400 drop-shadow">GARTIC<span class="text-sky-400">PHONE</span></h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Audio Toggle Button -->
+            <button id="soundToggleBtn" onclick="game.toggleAudio()" class="w-10 h-10 bg-slate-700 hover:bg-slate-600 border-2 border-slate-900 rounded-xl flex items-center justify-center text-yellow-400 text-lg transition">
+                <i class="fas fa-volume-up" id="soundIcon"></i>
+            </button>
+            <div class="hidden sm:flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-semibold text-slate-300">
+                <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span> Modo Local Activo
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER WITH SCREENS -->
+    <main class="flex-grow flex items-center justify-center p-3 sm:p-6 relative">
+        
+        <!-- 1. HOME SCREEN / MODE SELECTION -->
+        <section id="screenHome" class="w-full max-w-4xl bg-slate-800 border-4 border-slate-700 rounded-3xl p-6 sm:p-10 shadow-2xl text-center space-y-8 animate-fade-in">
+            <div class="space-y-3">
+                <span class="bg-sky-500/20 text-sky-400 text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full border border-sky-500/30">
+                    ¡Teléfono Descompuesto Dibujado!
+                </span>
+                <h2 class="text-3xl sm:text-5xl font-black text-white">¿Listos para reír con los resultados?</h2>
+                <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+                    Escribe frases locas, dibújalas sin tiempo que perder y descubre cómo se transforma tu historia paso a paso.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                <!-- Pass & Play Card -->
+                <div class="bg-slate-900/80 border-3 border-slate-700 hover:border-yellow-400 rounded-2xl p-6 flex flex-col justify-between items-center text-center space-y-4 transition-all hover:scale-[1.02]">
+                    <div class="w-16 h-16 bg-yellow-400/20 text-yellow-400 rounded-2xl flex items-center justify-center text-3xl border border-yellow-400/30">
+                        👥
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-yellow-400">Pasar y Jugar (2 - 6 Jugadores)</h3>
+                        <p class="text-xs text-slate-400 mt-1">Juega en el mismo dispositivo paso a paso. Ideal para reuniones o familia.</p>
+                    </div>
+                    <div class="w-full space-y-2">
+                        <label class="text-xs font-semibold text-slate-400 block">Número de jugadores:</label>
+                        <select id="passPlayerCount" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl py-2 px-3 text-center text-yellow-400 font-bold focus:outline-none focus:border-yellow-400">
+                            <option value="2">2 Jugadores (1 Ronda Completa)</option>
+                            <option value="3" selected>3 Jugadores (Modo Clásico)</option>
+                            <option value="4">4 Jugadores</option>
+                            <option value="5">5 Jugadores</option>
+                        </select>
+                    </div>
+                    <button onclick="game.startPassAndPlay()" class="w-full btn-cartoon btn-yellow py-3 rounded-xl font-bold text-lg tracking-wide uppercase">
+                        ¡Iniciar Cadena!
+                    </button>
+                </div>
+
+                <!-- Single Player vs Bot/Quick Mode Card -->
+                <div class="bg-slate-900/80 border-3 border-slate-700 hover:border-sky-400 rounded-2xl p-6 flex flex-col justify-between items-center text-center space-y-4 transition-all hover:scale-[1.02]">
+                    <div class="w-16 h-16 bg-sky-400/20 text-sky-400 rounded-2xl flex items-center justify-center text-3xl border border-sky-400/30">
+                        🤖
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-sky-400">Modo Desafío Rápido</h3>
+                        <p class="text-xs text-slate-400 mt-1">Recibe una frase aleatoria, dibújala en tiempo récord y obtén la adivinanza automática de nuestro Bot.</p>
+                    </div>
+                    <div class="py-2">
+                        <span class="inline-block bg-slate-800 border border-slate-700 rounded-lg px-3 py-1 text-xs text-slate-300">
+                            ⏱️ 60 Segundos por Ronda
+                        </span>
+                    </div>
+                    <button onclick="game.startQuickSolo()" class="w-full btn-cartoon btn-blue py-3 rounded-xl font-bold text-lg tracking-wide uppercase">
+                        Solitario Rápido
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. WRITE PROMPT SCREEN -->
+        <section id="screenPrompt" class="w-full max-w-2xl bg-slate-800 border-4 border-slate-700 rounded-3xl p-6 sm:p-10 shadow-2xl text-center space-y-6 hidden">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+                <span id="promptPlayerBadge" class="bg-purple-600 text-white font-bold text-xs uppercase px-3 py-1 rounded-full border border-purple-400">
+                    Jugador 1
+                </span>
+                <span class="text-slate-400 text-xs font-semibold">Paso 1: ¡Imaginación al límite!</span>
+            </div>
+
+            <div class="space-y-2">
+                <h2 id="promptTitle" class="text-2xl sm:text-4xl font-bold text-yellow-400">Escribe una frase secreta</h2>
+                <p id="promptSubtitle" class="text-slate-300 text-sm">Crea una situación extraña o divertida para que el siguiente jugador la dibuje.</p>
+            </div>
+
+            <!-- Context Card if guessing from a drawing -->
+            <div id="guessContextCard" class="hidden bg-slate-900 border-2 border-slate-700 rounded-2xl p-3 max-w-md mx-auto space-y-2">
+                <p class="text-xs text-slate-400 font-bold uppercase">Observa el dibujo anterior:</p>
+                <img id="previousDrawingImg" class="max-h-48 mx-auto rounded-xl border border-slate-700 object-contain bg-white" src="" alt="Dibujo previo">
+            </div>
+
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="promptInput" maxlength="70" placeholder="Ej: Un gato astronauta comiendo pizza en Marte..." 
+                           class="w-full bg-slate-900 border-3 border-slate-600 focus:border-yellow-400 rounded-2xl py-4 px-5 text-lg font-bold text-white placeholder-slate-500 focus:outline-none transition shadow-inner">
+                    <button onclick="game.randomizePrompt()" class="absolute right-3 top-3 bg-slate-700 hover:bg-slate-600 text-yellow-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-600 flex items-center gap-1">
+                        🎲 Aleatoria
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="game.submitPrompt()" class="w-full btn-cartoon btn-yellow py-4 rounded-2xl font-black text-xl uppercase tracking-wider">
+                ¡Listo para Dibujar! ➔
+            </button>
+        </section>
+
+        <!-- 3. DRAWING CANVAS SCREEN -->
+        <section id="screenDraw" class="w-full max-w-5xl bg-slate-800 border-4 border-slate-700 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col space-y-4 hidden">
+            
+            <!-- Canvas Header Bar -->
+            <div class="flex flex-wrap justify-between items-center bg-slate-900 px-4 py-3 rounded-2xl border border-slate-700 gap-2">
+                <div class="flex items-center gap-2">
+                    <span id="drawPlayerBadge" class="bg-blue-600 text-white font-bold text-xs uppercase px-3 py-1 rounded-full">
+                        Jugador 2
+                    </span>
+                    <h3 class="text-sm sm:text-base font-bold text-slate-200 truncate max-w-xs sm:max-w-md">
+                        Dibuja: "<span id="displaySecretPrompt" class="text-yellow-400">---</span>"
+                    </h3>
+                </div>
+
+                <!-- Timer -->
+                <div class="flex items-center gap-2 bg-slate-800 border-2 border-slate-700 px-3 py-1 rounded-xl">
+                    <i class="fas fa-clock text-yellow-400 animate-bounce"></i>
+                    <span id="timerDisplay" class="font-bold text-xl text-yellow-400">60</span>s
+                </div>
+            </div>
+
+            <!-- Canvas Work Area -->
+            <div class="relative w-full bg-white rounded-2xl overflow-hidden border-4 border-slate-900 shadow-inner flex justify-center items-center">
+                <canvas id="paintCanvas" class="w-full h-[360px] sm:h-[460px] bg-white"></canvas>
+            </div>
+
+            <!-- Drawing Toolbar & Controls -->
+            <div class="bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-700 flex flex-col md:flex-row gap-4 justify-between items-center">
+                
+                <!-- Tools Selection -->
+                <div class="flex items-center gap-2">
+                    <button id="toolBrush" onclick="game.setTool('brush')" class="tool-btn bg-yellow-400 text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-900 shadow-sm" title="Pincel">
+                        <i class="fas fa-paint-brush"></i>
+                    </button>
+                    <button id="toolBucket" onclick="game.setTool('bucket')" class="tool-btn bg-slate-800 text-slate-300 hover:text-white w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-700" title="Bote de Pintura">
+                        <i class="fas fa-fill-drip"></i>
+                    </button>
+                    <button id="toolEraser" onclick="game.setTool('eraser')" class="tool-btn bg-slate-800 text-slate-300 hover:text-white w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-700" title="Goma de Borrar">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    
+                    <div class="h-6 w-0.5 bg-slate-700 mx-1"></div>
+
+                    <!-- Size Selector -->
+                    <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                        <i class="fas fa-circle text-xs text-slate-400"></i>
+                        <input type="range" id="brushSize" min="2" max="40" value="8" class="w-20 accent-yellow-400 cursor-pointer">
+                        <i class="fas fa-circle text-lg text-slate-400"></i>
+                    </div>
+                </div>
+
+                <!-- Color Palette -->
+                <div class="flex items-center gap-1.5 flex-wrap justify-center">
+                    <button onclick="game.setColor('#000000')" class="w-7 h-7 rounded-full bg-black border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#ffffff')" class="w-7 h-7 rounded-full bg-white border-2 border-slate-400 shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#ff4757')" class="w-7 h-7 rounded-full bg-red-500 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#ffa500')" class="w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#eccc68')" class="w-7 h-7 rounded-full bg-yellow-400 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#2ed573')" class="w-7 h-7 rounded-full bg-green-500 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#1e90ff')" class="w-7 h-7 rounded-full bg-blue-500 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#3742fa')" class="w-7 h-7 rounded-full bg-indigo-600 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#57606f')" class="w-7 h-7 rounded-full bg-gray-600 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#8e44ad')" class="w-7 h-7 rounded-full bg-purple-600 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    <button onclick="game.setColor('#e84393')" class="w-7 h-7 rounded-full bg-pink-500 border-2 border-white shadow-sm transform hover:scale-110 transition"></button>
+                    
+                    <!-- Custom Color Picker Input -->
+                    <div class="relative w-7 h-7 rounded-full overflow-hidden border-2 border-white cursor-pointer hover:scale-110 transition">
+                        <input type="color" id="customColorPicker" value="#0066FF" onchange="game.setColor(this.value)" class="absolute -top-2 -left-2 w-12 h-12 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Actions (Undo, Clear, Submit) -->
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <button onclick="game.undo()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl border border-slate-700 text-xs font-bold" title="Deshacer">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button onclick="game.clearCanvas()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl border border-slate-700 text-xs font-bold" title="Limpiar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button onclick="game.submitDrawing()" class="btn-cartoon btn-green px-5 py-2 rounded-xl font-bold text-sm uppercase">
+                        Enviar ✔
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. PASS THE DEVICE INTERMEDIATE SCREEN -->
+        <section id="screenPassDevice" class="w-full max-w-xl bg-slate-800 border-4 border-slate-700 rounded-3xl p-8 sm:p-12 shadow-2xl text-center space-y-6 hidden">
+            <div class="w-24 h-24 bg-yellow-400/20 text-yellow-400 rounded-3xl flex items-center justify-center text-5xl mx-auto border-2 border-yellow-400/40 animate-bounce">
+                📱
+            </div>
+            <div class="space-y-2">
+                <h2 class="text-3xl font-black text-white">¡Pasa el Dispositivo!</h2>
+                <p id="passNextPlayerText" class="text-yellow-400 text-xl font-bold">Turno del Jugador 2</p>
+                <p class="text-slate-400 text-xs sm:text-sm">No mires la pantalla hasta que el dispositivo esté en tus manos para mantener el secreto.</p>
+            </div>
+            <button onclick="game.confirmNextTurn()" class="w-full btn-cartoon btn-yellow py-4 rounded-2xl font-black text-xl uppercase tracking-wider">
+                ¡Estoy Listo! 🚀
+            </button>
+        </section>
+
+        <!-- 5. FINAL REVEAL GALLERY SCREEN -->
+        <section id="screenReveal" class="w-full max-w-4xl bg-slate-800 border-4 border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 hidden">
+            <div class="text-center space-y-2 border-b border-slate-700 pb-4">
+                <span class="bg-green-500/20 text-green-400 text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full border border-green-500/30">
+                    🎉 ¡Resultado de la Historia!
+                </span>
+                <h2 class="text-3xl sm:text-4xl font-black text-white">La Cadena del Teléfono Descompuesto</h2>
+                <p class="text-slate-400 text-sm">Mira cómo mutó la frase original desde el inicio hasta el final.</p>
+            </div>
+
+            <!-- Reveal Scrollable Chain -->
+            <div id="revealChainContainer" class="space-y-6 max-h-[50vh] overflow-y-auto pr-2">
+                <!-- Dynamically generated entries will go here -->
+            </div>
+
+            <!-- Play Again Controls -->
+            <div class="pt-4 border-t border-slate-700 flex flex-col sm:flex-row gap-4 justify-center">
+                <button onclick="game.showHome()" class="btn-cartoon btn-yellow py-3 px-8 rounded-xl font-bold text-lg uppercase">
+                    🏠 Volver al Inicio
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full bg-slate-950 py-3 text-center text-slate-500 text-xs border-t border-slate-800">
+        Gartic Party © 2026 - Juego de Teléfono Descompuesto y Dibujo interactivo
+    </footer>
+
+    <!-- AUDIO EFFECTS AND GAME ENGINE JS -->
+    <script>
+        // Preset secret prompt ideas for fast fun
+        const RANDOM_PROMPTS = [
+            "Un dinosaurio bailando salsa en la discoteca",
+            "Un alienígena comiendo tacos picantes en la Luna",
+            "Un pingüino surfista huyendo de un tiburón con gafas",
+            "Un perro detective resolviendo un misterio",
+            "Un superhéroe torpe tropezando con una cáscara de plátano",
+            "Un gato astronauta flotando con globos de cumpleaños",
+            "Un robot haciendo café en una cafetería futurista",
+            "Un unicornio volador llevando una pizza tamaño gigante",
+            "Un oso panda tocando la guitarra eléctrica en un concierto",
+            "Un vampiro tomando sol en la playa con sombrilla"
+        ];
+
+        const BOT_GUESSES = [
+            "Un dinosaurio muy feliz en una fiesta",
+            "Un monstruo espacial comiendo algo picante",
+            "Un animal con gafas de sol en la playa",
+            "Un superhéroe volando sobre la ciudad",
+            "Un gato flotando en el espacio exterior",
+            "Un robot cocinando cosas raras",
+            "Una criatura mágica haciendo música"
+        ];
+
+        class GarticGameEngine {
+            constructor() {
+                // Game State
+                this.mode = 'pass'; // 'pass' or 'solo'
+                this.totalPlayers = 3;
+                this.currentTurn = 1; // 1-indexed
+                this.chain = []; // [{type: 'prompt'|'drawing', player: 1, content: 'string or dataURL'}]
+                this.timerInterval = null;
+                this.timeLeft = 60;
+                
+                // Sound Settings
+                this.soundEnabled = true;
+                this.synth = null;
+
+                // Canvas State
+                this.canvas = document.getElementById('paintCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isDrawing = false;
+                this.currentTool = 'brush'; // 'brush', 'eraser', 'bucket'
+                this.currentColor = '#000000';
+                this.currentSize = 8;
+                this.undoStack = [];
+                this.maxUndo = 15;
+
+                this.initAudio();
+                this.initCanvas();
+            }
+
+            // --- AUDIO SYSTEM (Tone.js) ---
+            initAudio() {
+                try {
+                    this.synth = new Tone.Synth({
+                        oscillator: { type: "triangle" },
+                        envelope: { attack: 0.005, decay: 0.1, sustain: 0.05, release: 0.1 }
+                    }).toDestination();
+                    this.synth.volume.value = -12;
+                } catch(e) {
+                    console.log("Audio couldn't initialize immediately");
+                }
+            }
+
+            playPopSound() {
+                if (!this.soundEnabled || !this.synth) return;
+                try {
+                    Tone.start();
+                    this.synth.triggerAttackRelease("C5", "8n");
+                } catch(e){}
+            }
+
+            playSuccessSound() {
+                if (!this.soundEnabled || !this.synth) return;
+                try {
+                    Tone.start();
+                    const now = Tone.now();
+                    this.synth.triggerAttackRelease("C5", "8n", now);
+                    this.synth.triggerAttackRelease("G5", "8n", now + 0.1);
+                } catch(e){}
+            }
+
+            toggleAudio() {
+                this.soundEnabled = !this.soundEnabled;
+                const icon = document.getElementById('soundIcon');
+                if (this.soundEnabled) {
+                    icon.className = "fas fa-volume-up";
+                    this.playPopSound();
+                } else {
+                    icon.className = "fas fa-volume-mute text-slate-500";
+                }
+            }
+
+            // --- NAVIGATION ---
+            showScreen(screenId) {
+                const screens = ['screenHome', 'screenPrompt', 'screenDraw', 'screenPassDevice', 'screenReveal'];
+                screens.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (id === screenId) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                });
+            }
+
+            showHome() {
+                this.stopTimer();
+                this.chain = [];
+                this.currentTurn = 1;
+                this.showScreen('screenHome');
+            }
+
+            // --- GAME FLOW LOGIC ---
+            startPassAndPlay() {
+                this.playPopSound();
+                this.mode = 'pass';
+                this.totalPlayers = parseInt(document.getElementById('passPlayerCount').value);
+                this.chain = [];
+                this.currentTurn = 1;
+                this.setupPromptStep();
+            }
+
+            startQuickSolo() {
+                this.playPopSound();
+                this.mode = 'solo';
+                this.totalPlayers = 2; // Step 1: Prompt/Player, Step 2: Draw, Step 3: Bot Guess
+                this.chain = [];
+                this.currentTurn = 1;
+                this.setupPromptStep();
+            }
+
+            setupPromptStep() {
+                this.showScreen('screenPrompt');
+                document.getElementById('promptPlayerBadge').innerText = `Jugador ${this.currentTurn}`;
+                document.getElementById('promptInput').value = '';
+
+                const lastItem = this.chain[this.chain.length - 1];
+                const contextCard = document.getElementById('guessContextCard');
+
+                if (lastItem && lastItem.type === 'drawing') {
+                    // Turn where player guesses based on drawing
+                    document.getElementById('promptTitle').innerText = "¿Qué crees que dibujaron?";
+                    document.getElementById('promptSubtitle').innerText = "Escribe la adivinanza exacta de lo que ves en la imagen.";
+                    document.getElementById('previousDrawingImg').src = lastItem.content;
+                    contextCard.classList.remove('hidden');
+                } else {
+                    // Turn where player gives initial secret phrase
+                    document.getElementById('promptTitle').innerText = "Escribe una frase secreta";
+                    document.getElementById('promptSubtitle').innerText = "Crea una situación cómica o loca para iniciar la cadena.";
+                    contextCard.classList.add('hidden');
+                }
+            }
+
+            randomizePrompt() {
+                this.playPopSound();
+                const rand = RANDOM_PROMPTS[Math.floor(Math.random() * RANDOM_PROMPTS.length)];
+                document.getElementById('promptInput').value = rand;
+            }
+
+            submitPrompt() {
+                const input = document.getElementById('promptInput').value.trim();
+                if (!input) {
+                    this.shakeInput();
+                    return;
+                }
+                this.playSuccessSound();
+
+                this.chain.push({
+                    type: 'prompt',
+                    player: this.currentTurn,
+                    content: input
+                });
+
+                if (this.mode === 'solo' && this.currentTurn === 1) {
+                    // Solo mode goes straight to drawing the phrase
+                    this.currentTurn = 2;
+                    this.setupDrawingStep();
+                } else if (this.currentTurn >= this.totalPlayers) {
+                    // Reached end of turns
+                    this.showRevealGallery();
+                } else {
+                    // Next is Drawing Step
+                    this.currentTurn++;
+                    this.showPassDeviceScreen('draw');
+                }
+            }
+
+            setupDrawingStep() {
+                this.showScreen('screenDraw');
+                document.getElementById('drawPlayerBadge').innerText = `Jugador ${this.currentTurn}`;
+                
+                // Get prompt to draw
+                const lastPrompt = this.chain[this.chain.length - 1].content;
+                document.getElementById('displaySecretPrompt').innerText = lastPrompt;
+
+                this.resizeCanvas();
+                this.clearCanvas(false);
+                this.startTimer(60);
+            }
+
+            submitDrawing() {
+                this.stopTimer();
+                this.playSuccessSound();
+
+                const dataURL = this.canvas.toDataURL();
+                this.chain.push({
+                    type: 'drawing',
+                    player: this.currentTurn,
+                    content: dataURL
+                });
+
+                if (this.mode === 'solo') {
+                    // Bot makes a fake guess
+                    const randomBotGuess = BOT_GUESSES[Math.floor(Math.random() * BOT_GUESSES.length)];
+                    this.chain.push({
+                        type: 'prompt',
+                        player: 'Bot Gartic 🤖',
+                        content: randomBotGuess
+                    });
+                    this.showRevealGallery();
+                } else if (this.currentTurn >= this.totalPlayers) {
+                    this.showRevealGallery();
+                } else {
+                    this.currentTurn++;
+                    this.showPassDeviceScreen('prompt');
+                }
+            }
+
+            showPassDeviceScreen(nextStepType) {
+                this.nextStepType = nextStepType;
+                document.getElementById('passNextPlayerText').innerText = `Turno del Jugador ${this.currentTurn}`;
+                this.showScreen('screenPassDevice');
+            }
+
+            confirmNextTurn() {
+                this.playPopSound();
+                if (this.nextStepType === 'draw') {
+                    this.setupDrawingStep();
+                } else {
+                    this.setupPromptStep();
+                }
+            }
+
+            // --- TIMER ---
+            startTimer(seconds) {
+                this.stopTimer();
+                this.timeLeft = seconds;
+                document.getElementById('timerDisplay').innerText = this.timeLeft;
+
+                this.timerInterval = setInterval(() => {
+                    this.timeLeft--;
+                    document.getElementById('timerDisplay').innerText = this.timeLeft;
+
+                    if (this.timeLeft <= 0) {
+                        this.stopTimer();
+                        this.submitDrawing(); // Auto submit when time runs out
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+
+            // --- CANVAS DRAWING ENGINE ---
+            initCanvas() {
+                // Event Listeners for Drawing
+                const c = this.canvas;
+                
+                // Mouse events
+                c.addEventListener('mousedown', (e) => this.startDraw(e));
+                c.addEventListener('mousemove', (e) => this.draw(e));
+                c.addEventListener('mouseup', () => this.endDraw());
+                c.addEventListener('mouseleave', () => this.endDraw());
+
+                // Touch events for Mobile/Tablet
+                c.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.startDraw(touch);
+                });
+                c.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.draw(touch);
+                });
+                c.addEventListener('touchend', () => this.endDraw());
+
+                // Brush Size slider
+                document.getElementById('brushSize').addEventListener('input', (e) => {
+                    this.currentSize = e.target.value;
+                });
+
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                // Set inner resolution matching bounding rect
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    // Save previous frame
+                    const temp = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    this.canvas.width = rect.width;
+                    this.canvas.height = rect.height;
+                    this.ctx.fillStyle = "#ffffff";
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.putImageData(temp, 0, 0);
+                }
+            }
+
+            getCanvasCoords(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            saveState() {
+                if (this.undoStack.length >= this.maxUndo) {
+                    this.undoStack.shift();
+                }
+                this.undoStack.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
+            }
+
+            undo() {
+                if (this.undoStack.length > 0) {
+                    this.playPopSound();
+                    const lastState = this.undoStack.pop();
+                    this.ctx.putImageData(lastState, 0, 0);
+                }
+            }
+
+            startDraw(e) {
+                const coords = this.getCanvasCoords(e);
+
+                if (this.currentTool === 'bucket') {
+                    this.saveState();
+                    this.floodFill(Math.round(coords.x), Math.round(coords.y), this.hexToRgba(this.currentColor));
+                    return;
+                }
+
+                this.saveState();
+                this.isDrawing = true;
+                this.ctx.beginPath();
+                this.ctx.moveTo(coords.x, coords.y);
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.strokeStyle = this.currentTool === 'eraser' ? '#ffffff' : this.currentColor;
+                this.ctx.lineWidth = this.currentSize;
+            }
+
+            draw(e) {
+                if (!this.isDrawing) return;
+                const coords = this.getCanvasCoords(e);
+                this.ctx.lineTo(coords.x, coords.y);
+                this.ctx.stroke();
+            }
+
+            endDraw() {
+                if (this.isDrawing) {
+                    this.ctx.closePath();
+                    this.isDrawing = false;
+                }
+            }
+
+            clearCanvas(save = true) {
+                if (save) this.saveState();
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            setTool(tool) {
+                this.playPopSound();
+                this.currentTool = tool;
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.className = "tool-btn bg-slate-800 text-slate-300 hover:text-white w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-700";
+                });
+                
+                if (tool === 'brush') document.getElementById('toolBrush').className = "tool-btn bg-yellow-400 text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-900 shadow-sm";
+                if (tool === 'bucket') document.getElementById('toolBucket').className = "tool-btn bg-yellow-400 text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-900 shadow-sm";
+                if (tool === 'eraser') document.getElementById('toolEraser').className = "tool-btn bg-yellow-400 text-slate-900 w-10 h-10 rounded-xl font-bold flex items-center justify-center border-2 border-slate-900 shadow-sm";
+            }
+
+            setColor(color) {
+                this.currentColor = color;
+                if (this.currentTool === 'eraser') {
+                    this.setTool('brush');
+                }
+            }
+
+            // Bucket Fill Algorithm (BFS)
+            floodFill(startX, startY, fillColor) {
+                const imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imgData.data;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+
+                const getPixelIndex = (x, y) => (y * width + x) * 4;
+                const targetIdx = getPixelIndex(startX, startY);
+
+                const targetR = data[targetIdx];
+                const targetG = data[targetIdx + 1];
+                const targetB = data[targetIdx + 2];
+                const targetA = data[targetIdx + 3];
+
+                if (targetR === fillColor.r && targetG === fillColor.g && targetB === fillColor.b) return;
+
+                const queue = [[startX, startY]];
+                const visited = new Uint8Array(width * height);
+
+                while (queue.length > 0) {
+                    const [x, y] = queue.pop();
+                    const idx = getPixelIndex(x, y);
+                    const posKey = y * width + x;
+
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                    if (visited[posKey]) continue;
+                    visited[posKey] = 1;
+
+                    if (Math.abs(data[idx] - targetR) < 30 &&
+                        Math.abs(data[idx+1] - targetG) < 30 &&
+                        Math.abs(data[idx+2] - targetB) < 30) {
+
+                        data[idx] = fillColor.r;
+                        data[idx+1] = fillColor.g;
+                        data[idx+2] = fillColor.b;
+                        data[idx+3] = 255;
+
+                        queue.push([x + 1, y]);
+                        queue.push([x - 1, y]);
+                        queue.push([x, y + 1]);
+                        queue.push([x, y - 1]);
+                    }
+                }
+                this.ctx.putImageData(imgData, 0, 0);
+            }
+
+            hexToRgba(hex) {
+                let c = hex.replace('#', '');
+                if (c.length === 3) c = c.split('').map(x => x + x).join('');
+                const num = parseInt(c, 16);
+                return {
+                    r: (num >> 16) & 255,
+                    g: (num >> 8) & 255,
+                    b: num & 255
+                };
+            }
+
+            // --- REVEAL GALLERY ---
+            showRevealGallery() {
+                this.showScreen('screenReveal');
+                const container = document.getElementById('revealChainContainer');
+                container.innerHTML = '';
+
+                this.chain.forEach((item, index) => {
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-900 border-2 border-slate-700 rounded-2xl p-4 sm:p-6 space-y-3 shadow-lg transform transition duration-300 hover:border-yellow-400";
+
+                    const header = document.createElement('div');
+                    header.className = "flex justify-between items-center text-xs font-bold text-slate-400";
+                    header.innerHTML = `
+                        <span class="bg-slate-800 px-3 py-1 rounded-full border border-slate-700 text-yellow-400">Paso ${index + 1}</span>
+                        <span>Jugador: ${item.player}</span>
+                    `;
+                    card.appendChild(header);
+
+                    if (item.type === 'prompt') {
+                        const promptBox = document.createElement('div');
+                        promptBox.className = "bg-slate-800/80 border border-slate-700 rounded-xl p-4 text-center";
+                        promptBox.innerHTML = `
+                            <p class="text-xs text-slate-400 font-bold uppercase mb-1">Frase / Adivinanza:</p>
+                            <p class="text-xl font-black text-yellow-400">"${item.content}"</p>
+                        `;
+                        card.appendChild(promptBox);
+                    } else {
+                        const drawBox = document.createElement('div');
+                        drawBox.className = "bg-white rounded-xl p-2 border-2 border-slate-700 overflow-hidden flex justify-center";
+                        drawBox.innerHTML = `<img src="${item.content}" class="max-h-72 object-contain rounded-lg" alt="Dibujo final">`;
+                        card.appendChild(drawBox);
+                    }
+
+                    container.appendChild(card);
+                });
+            }
+
+            shakeInput() {
+                const el = document.getElementById('promptInput');
+                el.classList.add('border-red-500', 'animate-bounce');
+                setTimeout(() => el.classList.remove('border-red-500', 'animate-bounce'), 600);
+            }
+        }
+
+        // Initialize game engine once DOM is ready
+        let game;
+        window.addEventListener('DOMContentLoaded', () => {
+            game = new GarticGameEngine();
+        });
+    </script>
+</body>
+</html>
